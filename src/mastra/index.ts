@@ -1,14 +1,27 @@
 import { Mastra } from "@mastra/core";
 import { createAnthropic } from "@ai-sdk/anthropic";
+import {
+  kahnemanAgent,
+  uxCroAgent,
+  copywriterAgent,
+  designerAgent,
+  freudAgent,
+  sutherlandAgent,
+} from "./agents/experts";
 
-const anthropic = createAnthropic({
+const anthropicProvider = createAnthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export const mastra = new Mastra({
-  agents: {},
-  tools: {},
-  workflows: {},
-});
+export const anthropic = anthropicProvider;
 
-export { anthropic };
+export const mastra = new Mastra({
+  agents: {
+    kahneman: kahnemanAgent,
+    uxCro: uxCroAgent,
+    copywriter: copywriterAgent,
+    designer: designerAgent,
+    freud: freudAgent,
+    sutherland: sutherlandAgent,
+  },
+});
