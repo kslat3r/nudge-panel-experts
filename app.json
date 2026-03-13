@@ -1,0 +1,59 @@
+{
+  "name": "agent-stack",
+  "description": "Agentic AI workflow stack: Mastra + Next.js + PostgreSQL (pgvector) + Langfuse",
+  "keywords": ["mastra", "nextjs", "ai", "agents", "langfuse"],
+  "stack": "heroku-24",
+  "formation": {
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    },
+    "worker": {
+      "quantity": 1,
+      "size": "basic"
+    }
+  },
+  "addons": [
+    {
+      "plan": "heroku-postgresql:essential-0"
+    },
+    {
+      "plan": "heroku-redis:mini"
+    }
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ],
+  "env": {
+    "ANTHROPIC_API_KEY": {
+      "description": "Anthropic API key for Claude",
+      "required": true
+    },
+    "LANGFUSE_PUBLIC_KEY": {
+      "description": "Langfuse public key for observability",
+      "required": false
+    },
+    "LANGFUSE_SECRET_KEY": {
+      "description": "Langfuse secret key for observability",
+      "required": false
+    },
+    "LANGFUSE_BASE_URL": {
+      "description": "Langfuse base URL",
+      "value": "https://cloud.langfuse.com"
+    },
+    "LLAMA_CLOUD_API_KEY": {
+      "description": "LlamaParse API key for document ingestion",
+      "required": false
+    },
+    "RESEND_API_KEY": {
+      "description": "Resend API key for email delivery",
+      "required": false
+    },
+    "NEXT_PUBLIC_APP_URL": {
+      "description": "Public URL of the application",
+      "required": true
+    }
+  }
+}
