@@ -12,7 +12,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "worker": "npx tsx --env-file=.env src/worker.ts",
-    "worker:dev": "npx tsx watch --env-file=.env src/worker.ts"
+    "worker:dev": "npx tsx watch --env-file=.env src/worker.ts",
+    "heroku-postbuild": "npx puppeteer browsers install chrome"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.41",
