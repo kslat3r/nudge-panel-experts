@@ -11,22 +11,29 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "worker": "npx tsx src/worker.ts"
+    "worker": "npx tsx --env-file=.env src/worker.ts",
+    "worker:dev": "npx tsx watch --env-file=.env src/worker.ts"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.58",
+    "@ai-sdk/openai": "^3.0.41",
+    "@emotion/cache": "^11.14.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@mastra/core": "^1.13.1",
     "@mastra/memory": "^1.8.1",
     "@mastra/pg": "^1.8.0",
     "@mastra/rag": "^2.1.2",
+    "@mui/icons-material": "^7.3.9",
+    "@mui/material": "^7.3.9",
+    "@mui/material-nextjs": "^7.3.9",
     "@neondatabase/serverless": "^1.0.2",
     "ai": "^6.0.116",
     "bullmq": "^5.71.0",
     "cheerio": "^1.2.0",
     "drizzle-orm": "^0.45.1",
     "ioredis": "^5.10.0",
-    "langfuse": "^3.38.6",
     "llamaindex": "^0.12.1",
+    "marked": "^17.0.4",
     "next": "16.1.6",
     "pg": "^8.20.0",
     "pgvector": "^0.2.1",
@@ -38,7 +45,6 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
     "@types/cheerio": "^0.22.35",
     "@types/node": "^20",
     "@types/pg": "^8.18.0",
@@ -49,7 +55,6 @@
     "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
     "typescript": "^5"
   }
 }

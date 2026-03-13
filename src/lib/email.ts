@@ -12,11 +12,11 @@ function getResend(): Resend {
 export async function sendReportEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
 ) {
   const resend = getResend();
   const { data, error } = await resend.emails.send({
-    from: "Nudge Panel <reports@nudgepanel.com>",
+    from: "Nudge Panel Experts <noreply@resend.dev>",
     to,
     subject,
     html,

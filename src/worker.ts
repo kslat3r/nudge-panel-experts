@@ -1,7 +1,7 @@
 import { Worker, Job } from "bullmq";
 import { scrapeLandingPage } from "./lib/scraper";
 import { experts } from "./mastra/agents/experts";
-import { anthropic } from "./mastra/index";
+import { openai } from "./mastra/index";
 import { generateText } from "ai";
 import {
   NudgeReport,
@@ -9,7 +9,6 @@ import {
   generateReportHtml,
 } from "./lib/report";
 import { sendReportEmail } from "./lib/email";
-import { createTrace } from "./lib/langfuse";
 import { db, schema } from "./db";
 import { eq } from "drizzle-orm";
 
@@ -26,7 +25,6 @@ function getConnectionOptions() {
 
 async function handleNudgePanelAnalysis(job: Job) {
   const { jobId, url, email } = job.data;
-  const trace = createTrace("nudge-panel-analysis", { jobId, url, email });
 
   try {
     // Update status to processing
@@ -64,8 +62,6 @@ ${scrapedPage.images.slice(0, 15).map((i) => `  - alt="${i.alt}" src="${i.src}"`
     console.log(`[${jobId}] Running ${experts.length} expert analyses...`);
     const expertResults = await Promise.all(
       experts.map(async (expert) => {
-        const span = trace.span({ name: `expert-${expert.name}` });
-
         const result = await expert.generate(
           [
             {
@@ -84,8 +80,6 @@ ${scrapedPage.images.slice(0, 15).map((i) => `  - alt="${i.alt}" src="${i.src}"`
           ],
         );
 
-        span.end({ output: { text: result.text } });
-
         return {
           expertName: expert.name,
           analysis: result.text,
@@ -95,19 +89,16 @@ ${scrapedPage.images.slice(0, 15).map((i) => `  - alt="${i.alt}" src="${i.src}"`
 
     // Generate executive summary
     console.log(`[${jobId}] Generating executive summary...`);
-    const summarySpan = trace.span({ name: "executive-summary" });
 
     const allAnalyses = expertResults
       .map((ea) => `## ${ea.expertName}\n${ea.analysis}`)
       .join("\n\n---\n\n");
 
     const { text: executiveSummary } = await generateText({
-      model: anthropic("claude-sonnet-4-20250514"),
+      model: openai("gpt-4.1"),
       system: `You are synthesising expert analyses of a landing page into a brief, compelling executive summary. This summary is the "foot in the door" — it should clearly diagnose what's wrong, tease 1-2 solutions, and make the reader want the full breakdown. Keep it to 3-4 paragraphs. Be direct and specific, not generic.`,
       prompt: `Here are analyses from our panel of experts for the landing page at ${url}:\n\n${allAnalyses}\n\nSynthesise these into a brief executive summary that highlights the most critical issues and teases solutions.`,
     });
-
-    summarySpan.end({ output: { text: executiveSummary } });
 
     // Build the report
     const report: NudgeReport = {
@@ -138,7 +129,6 @@ ${scrapedPage.images.slice(0, 15).map((i) => `  - alt="${i.alt}" src="${i.src}"`
       })
       .where(eq(schema.jobs.id, jobId));
 
-    trace.update({ output: { status: "completed" } });
     console.log(`[${jobId}] Analysis complete and emailed to ${email}`);
 
     return report;
@@ -155,7 +145,6 @@ ${scrapedPage.images.slice(0, 15).map((i) => `  - alt="${i.alt}" src="${i.src}"`
       })
       .where(eq(schema.jobs.id, jobId));
 
-    trace.update({ output: { status: "failed", error: errorMessage } });
     throw error;
   }
 }

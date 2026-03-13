@@ -1,7 +1,7 @@
 import { Agent } from "@mastra/core/agent";
-import { anthropic } from "../index";
+import { openai } from "../model";
 
-const model = anthropic("claude-sonnet-4-20250514");
+const model = openai("gpt-5.2");
 
 export const kahnemanAgent = new Agent({
   id: "kahneman",

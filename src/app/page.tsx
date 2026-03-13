@@ -1,6 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Container from "@mui/material/Container";
+import TextField from "@mui/material/TextField";
+import Typography from "@mui/material/Typography";
+import Alert from "@mui/material/Alert";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 type Status = "idle" | "submitting" | "submitted" | "error";
 
@@ -32,109 +41,109 @@ export default function Home() {
       setJobId(data.jobId);
       setStatus("submitted");
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Something went wrong");
+      setErrorMessage(
+        err instanceof Error ? err.message : "Something went wrong"
+      );
       setStatus("error");
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-[family-name:var(--font-geist-sans)] dark:bg-black">
-      <main className="w-full max-w-lg px-6 py-16">
-        <div className="mb-12 text-center">
-          <h1 className="mb-3 text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        alignItems: "center",
+        justifyContent: "center",
+        bgcolor: "grey.50",
+      }}
+    >
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Box sx={{ mb: 6, textAlign: "center" }}>
+          <Typography
+            variant="h3"
+            component="h1"
+            fontWeight="bold"
+            gutterBottom
+          >
             Nudge Panel
-          </h1>
-          <p className="text-lg text-zinc-500 dark:text-zinc-400">
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
             Six AI experts analyse your landing page and tell you exactly
             what&apos;s not working — and why.
-          </p>
-        </div>
+          </Typography>
+        </Box>
 
         {status === "submitted" ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-8 text-center dark:border-emerald-800 dark:bg-emerald-950">
-            <div className="mb-4 text-4xl">&#9989;</div>
-            <h2 className="mb-2 text-xl font-semibold text-emerald-900 dark:text-emerald-100">
+          <Paper
+            elevation={0}
+            sx={{
+              p: 4,
+              textAlign: "center",
+              border: 1,
+              borderColor: "success.light",
+              bgcolor: "success.50",
+            }}
+          >
+            <CheckCircleOutlineIcon
+              color="success"
+              sx={{ fontSize: 48, mb: 2 }}
+            />
+            <Typography variant="h6" fontWeight="semibold" gutterBottom>
               Analysis Queued
-            </h2>
-            <p className="text-emerald-700 dark:text-emerald-300">
+            </Typography>
+            <Typography color="text.secondary">
               Our panel of experts is reviewing your landing page. You&apos;ll
               receive the report at <strong>{email}</strong> shortly.
-            </p>
-            <p className="mt-4 text-sm text-emerald-600 dark:text-emerald-400">
+            </Typography>
+            <Typography variant="body2" color="text.disabled" sx={{ mt: 2 }}>
               Job ID: {jobId}
-            </p>
-          </div>
+            </Typography>
+          </Paper>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label
-                htmlFor="url"
-                className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                Landing Page URL
-              </label>
-              <input
-                id="url"
-                type="url"
-                required
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://example.com/landing-page"
-                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-zinc-900 placeholder-zinc-400 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-600"
-              />
-            </div>
+          <Stack component="form" onSubmit={handleSubmit} spacing={3}>
+            <TextField
+              id="url"
+              label="Landing Page URL"
+              type="url"
+              required
+              fullWidth
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/landing-page"
+            />
 
-            <div>
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-              >
-                Email Address
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-3 text-zinc-900 placeholder-zinc-400 transition focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder-zinc-600"
-              />
-            </div>
+            <TextField
+              id="email"
+              label="Email Address"
+              type="email"
+              required
+              fullWidth
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
+            />
 
             {status === "error" && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
-                {errorMessage}
-              </div>
+              <Alert severity="error">{errorMessage}</Alert>
             )}
 
-            <button
+            <Button
               type="submit"
+              variant="contained"
+              size="large"
+              fullWidth
               disabled={status === "submitting"}
-              className="w-full rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+              sx={{ py: 1.5, fontWeight: 600 }}
             >
               {status === "submitting"
                 ? "Submitting..."
                 : "Analyse My Landing Page"}
-            </button>
-          </form>
+            </Button>
+          </Stack>
         )}
 
-        <div className="mt-12 grid grid-cols-3 gap-4 text-center text-xs text-zinc-400 dark:text-zinc-600">
-          <div>
-            <div className="mb-1 text-lg">&#129504;</div>
-            Behavioural Science
-          </div>
-          <div>
-            <div className="mb-1 text-lg">&#127912;</div>
-            Design & UX
-          </div>
-          <div>
-            <div className="mb-1 text-lg">&#9997;&#65039;</div>
-            Copywriting
-          </div>
-        </div>
-      </main>
-    </div>
+      </Container>
+    </Box>
   );
 }

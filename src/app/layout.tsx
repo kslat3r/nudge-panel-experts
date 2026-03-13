@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import ThemeRegistry from "./ThemeRegistry";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Nudge Panel — Expert Landing Page Analysis",
-  description: "Get your landing page analysed by a panel of AI experts in behavioural science, UX, copywriting, design, and psychology.",
+  description:
+    "Get your landing page analysed by a panel of AI experts in behavioural science, UX, copywriting, design, and psychology.",
 };
 
 export default function RootLayout({
@@ -24,10 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+        <ThemeRegistry>{children}</ThemeRegistry>
       </body>
     </html>
   );

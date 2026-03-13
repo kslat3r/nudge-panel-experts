@@ -4,12 +4,11 @@ AI-powered landing page analysis tool. A panel of six AI expert personas analyse
 
 ## Stack
 
-- **Framework**: Next.js 16 (App Router, TypeScript, Tailwind CSS)
-- **Orchestration**: Mastra (`@mastra/core`) with Anthropic Claude (`claude-sonnet-4-20250514`)
+- **Framework**: Next.js 16 (App Router, TypeScript, Material UI)
+- **Orchestration**: Mastra (`@mastra/core`) with OpenAI (`gpt-4o`)
 - **Database**: PostgreSQL + pgvector via Drizzle ORM
 - **Queue**: BullMQ + Redis for async job processing
 - **Scraping**: Puppeteer (screenshots) + Cheerio (HTML extraction)
-- **Observability**: Langfuse tracing
 - **Email**: Resend
 - **Hosting**: Heroku (web dyno + worker dyno)
 
@@ -29,7 +28,6 @@ src/
     scraper.ts                  # Puppeteer screenshot + Cheerio HTML extraction
     report.ts                   # HTML report template generation
     email.ts                    # Resend email delivery
-    langfuse.ts                 # Langfuse singleton + trace helper
     queue.ts                    # BullMQ queue factory
     redis.ts                    # IORedis singleton
   mastra/
@@ -65,8 +63,6 @@ Each expert returns: Key Findings, Detailed Analysis, quantitative Metrics (1-10
    - Builds a styled HTML report
    - Emails the report to the user via Resend
    - Updates the job record with results
-4. Every agent call is traced in Langfuse for observability
-
 ## Commands
 
 - `npm run dev` — Start Next.js dev server
@@ -84,15 +80,13 @@ Each expert returns: Key Findings, Detailed Analysis, quantitative Metrics (1-10
 Copy `.env.example` to `.env`. Required:
 - `DATABASE_URL` — PostgreSQL connection string
 - `REDIS_URL` — Redis connection string
-- `ANTHROPIC_API_KEY` — For Claude LLM calls
+- `OPENAI_API_KEY` — For OpenAI LLM calls
 - `RESEND_API_KEY` — For email delivery
-- `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY` — For observability (optional)
 
 ## Conventions
 
 - Expert agents are defined in `src/mastra/agents/experts.ts` and registered in `src/mastra/index.ts`
 - Long-running analysis goes through BullMQ to avoid Heroku's 30-second request timeout
 - The worker runs all experts in parallel via `Promise.all` for speed
-- Use `createTrace()` from `src/lib/langfuse.ts` to instrument agent calls
 - The report email template is in `src/lib/report.ts` — inline styles for email client compatibility
 - The `from` address in `src/lib/email.ts` must match a verified Resend domain

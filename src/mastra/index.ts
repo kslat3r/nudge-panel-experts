@@ -1,5 +1,4 @@
 import { Mastra } from "@mastra/core";
-import { createAnthropic } from "@ai-sdk/anthropic";
 import {
   kahnemanAgent,
   uxCroAgent,
@@ -9,11 +8,7 @@ import {
   sutherlandAgent,
 } from "./agents/experts";
 
-const anthropicProvider = createAnthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
-
-export const anthropic = anthropicProvider;
+export { openai } from "./model";
 
 export const mastra = new Mastra({
   agents: {
