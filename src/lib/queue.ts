@@ -10,6 +10,7 @@ function getConnectionOptions() {
     port: parseInt(parsed.port || "6379"),
     password: parsed.password || undefined,
     maxRetriesPerRequest: null,
+    ...(parsed.protocol === "rediss:" ? { tls: { rejectUnauthorized: false } } : {}),
   };
 }
 

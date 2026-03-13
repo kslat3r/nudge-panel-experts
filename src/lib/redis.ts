@@ -8,6 +8,7 @@ export function getRedis(): IORedis {
     redisInstance = new IORedis(url, {
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
+      ...(url.startsWith("rediss://") ? { tls: { rejectUnauthorized: false } } : {}),
     });
   }
   return redisInstance;
