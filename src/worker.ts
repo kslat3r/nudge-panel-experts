@@ -3,11 +3,7 @@ import { scrapeLandingPage } from "./lib/scraper";
 import { experts } from "./mastra/agents/experts";
 import { openai } from "./mastra/index";
 import { generateText } from "ai";
-import {
-  NudgeReport,
-  ExpertAnalysis,
-  generateReportHtml,
-} from "./lib/report";
+import { NudgeReport, ExpertAnalysis, generateReportHtml } from "./lib/report";
 import { sendReportEmail } from "./lib/email";
 import { db, schema } from "./db";
 import { eq } from "drizzle-orm";
@@ -20,7 +16,9 @@ function getConnectionOptions() {
     port: parseInt(parsed.port || "6379"),
     password: parsed.password || undefined,
     maxRetriesPerRequest: null,
-    ...(parsed.protocol === "rediss:" ? { tls: { rejectUnauthorized: false } } : {}),
+    ...(parsed.protocol === "rediss:"
+      ? { tls: { rejectUnauthorized: false } }
+      : {}),
   };
 }
 
@@ -53,39 +51,34 @@ Page Content (excerpt):
 ${scrapedPage.bodyText}
 
 Links (sample):
-${scrapedPage.links.slice(0, 20).map((l) => `  - ${l.text}: ${l.href}`).join("\n")}
+${scrapedPage.links
+  .slice(0, 20)
+  .map((l) => `  - ${l.text}: ${l.href}`)
+  .join("\n")}
 
 Images:
-${scrapedPage.images.slice(0, 15).map((i) => `  - alt="${i.alt}" src="${i.src}"`).join("\n")}
+${scrapedPage.images
+  .slice(0, 15)
+  .map((i) => `  - alt="${i.alt}" src="${i.src}"`)
+  .join("\n")}
 `.trim();
 
     // Run all experts in parallel
     console.log(`[${jobId}] Running ${experts.length} expert analyses...`);
     const expertResults = await Promise.all(
       experts.map(async (expert) => {
-        const result = await expert.generate(
-          [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: `Please analyse this landing page:\n\n${pageContext}`,
-                },
-                {
-                  type: "image",
-                  image: `data:image/png;base64,${scrapedPage.screenshotBase64}`,
-                },
-              ],
-            },
-          ],
-        );
+        const result = await expert.generate([
+          {
+            role: "user",
+            content: `Please analyse this landing page:\n\n${pageContext}`,
+          },
+        ]);
 
         return {
           expertName: expert.name,
           analysis: result.text,
         } as ExpertAnalysis;
-      })
+      }),
     );
 
     // Generate executive summary
@@ -117,7 +110,7 @@ ${scrapedPage.images.slice(0, 15).map((i) => `  - alt="${i.alt}" src="${i.src}"`
     await sendReportEmail(
       email,
       `Nudge Panel Report: ${scrapedPage.title || url}`,
-      reportHtml
+      reportHtml,
     );
 
     // Update job as completed
@@ -160,8 +153,8 @@ const worker = new Worker(
   },
   {
     connection: getConnectionOptions(),
-    concurrency: 2,
-  }
+    concurrency: 1,
+  },
 );
 
 worker.on("completed", (job) => {

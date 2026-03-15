@@ -26,7 +26,7 @@ export function getQueue(name: string): Queue {
           attempts: 3,
           backoff: {
             type: "exponential",
-            delay: 1000,
+            delay: 10000,
           },
         },
       })
