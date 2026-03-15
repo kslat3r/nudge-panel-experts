@@ -1,4 +1,5 @@
 import * as cheerio from "cheerio";
+import { Client, TakeOptions } from "screenshotone-api-sdk";
 
 export interface ScrapedPage {
   url: string;
@@ -9,18 +10,15 @@ export interface ScrapedPage {
   links: { text: string; href: string }[];
   images: { alt: string; src: string }[];
   ctaButtons: string[];
+  screenshotBase64: string;
 }
 
 export async function scrapeLandingPage(url: string): Promise<ScrapedPage> {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    },
-    signal: AbortSignal.timeout(30000),
-  });
+  const [html, screenshotBase64] = await Promise.all([
+    fetchHtml(url),
+    takeScreenshot(url),
+  ]);
 
-  const html = await response.text();
   const $ = cheerio.load(html);
 
   const title = $("title").text().trim();
@@ -73,5 +71,38 @@ export async function scrapeLandingPage(url: string): Promise<ScrapedPage> {
     links: links.slice(0, 50),
     images: images.slice(0, 30),
     ctaButtons,
+    screenshotBase64,
   };
+}
+
+async function fetchHtml(url: string): Promise<string> {
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    },
+    signal: AbortSignal.timeout(30000),
+  });
+  return response.text();
+}
+
+async function takeScreenshot(url: string): Promise<string> {
+  const client = new Client(
+    process.env.SCREENSHOTONE_ACCESS_KEY!,
+    process.env.SCREENSHOTONE_SECRET_KEY!,
+  );
+
+  const options = TakeOptions.url(url)
+    .format("jpeg")
+    .imageQuality(70)
+    .viewportWidth(1280)
+    .viewportHeight(800)
+    .fullPage(false)
+    .blockAds(true)
+    .blockCookieBanners(true)
+    .timeout(15);
+
+  const blob = await client.take(options);
+  const buffer = Buffer.from(await blob.arrayBuffer());
+  return buffer.toString("base64");
 }

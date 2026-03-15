@@ -70,7 +70,16 @@ ${scrapedPage.images
         const result = await expert.generate([
           {
             role: "user",
-            content: `Please analyse this landing page:\n\n${pageContext}`,
+            content: [
+              {
+                type: "text",
+                text: `Please analyse this landing page:\n\n${pageContext}`,
+              },
+              {
+                type: "image",
+                image: `data:image/jpeg;base64,${scrapedPage.screenshotBase64}`,
+              },
+            ],
           },
         ]);
 
