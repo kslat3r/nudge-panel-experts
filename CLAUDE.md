@@ -8,7 +8,7 @@ AI-powered landing page analysis tool. A panel of six AI expert personas analyse
 - **Orchestration**: Mastra (`@mastra/core`) with OpenAI (`gpt-4o`)
 - **Database**: PostgreSQL + pgvector via Drizzle ORM
 - **Queue**: BullMQ + Redis for async job processing
-- **Scraping**: Puppeteer (screenshots) + Cheerio (HTML extraction)
+- **Scraping**: ScreenshotOne API (screenshots) + Cheerio (HTML extraction)
 - **Email**: Resend
 - **Hosting**: Heroku (web dyno + worker dyno)
 
@@ -25,7 +25,7 @@ src/
     schema.ts                   # Drizzle schema (jobs, documents tables)
     index.ts                    # Database connection
   lib/
-    scraper.ts                  # Puppeteer screenshot + Cheerio HTML extraction
+    scraper.ts                  # ScreenshotOne API screenshot + Cheerio HTML extraction
     report.ts                   # HTML report template generation
     email.ts                    # Resend email delivery
     queue.ts                    # BullMQ queue factory
@@ -57,7 +57,7 @@ Each expert returns: Key Findings, Detailed Analysis, quantitative Metrics (1-10
 1. User submits a landing page URL + email on the frontend
 2. `POST /api/analyse` creates a job record in Postgres and queues it via BullMQ
 3. The worker picks up the job:
-   - Scrapes the landing page (Puppeteer screenshot + Cheerio HTML parse)
+   - Scrapes the landing page (ScreenshotOne API screenshot + Cheerio HTML parse)
    - Runs all 6 expert agents in parallel (each receives page content + screenshot)
    - Generates an executive summary by synthesising all expert outputs
    - Builds a styled HTML report
