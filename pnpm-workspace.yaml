@@ -1,0 +1,6 @@
+onlyBuiltDependencies:
+  - esbuild
+  - msgpackr-extract
+  - sharp
+  - tree-sitter
+  - unrs-resolver
