@@ -16,7 +16,7 @@ export async function sendReportEmail(
 ) {
   const resend = getResend();
   const { data, error } = await resend.emails.send({
-    from: "Nudge Panel Experts <noreply@resend.dev>",
+    from: "Nudge Panel Experts <noreply@agentbloom.io>",
     to,
     subject,
     html,
