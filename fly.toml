@@ -6,6 +6,9 @@
 app = 'nudge-panel-experts-prod'
 primary_region = 'lhr'
 
+[env]
+  HOSTNAME = '0.0.0.0'
+
 [build]
 
 [http_service]
@@ -17,7 +20,6 @@ primary_region = 'lhr'
   processes = ['app']
 
 [[vm]]
-  memory = '1gb'
   cpu_kind = 'shared'
   cpus = 1
-  memory_mb = 256
+  memory_mb = 1024
