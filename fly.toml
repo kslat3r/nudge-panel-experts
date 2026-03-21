@@ -11,6 +11,10 @@ primary_region = 'lhr'
 
 [build]
 
+[processes]
+  app = "/app/docker-entrypoint.js pnpm run start"
+  worker = "pnpm run worker"
+
 [http_service]
   internal_port = 3000
   force_https = true
