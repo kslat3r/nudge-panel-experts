@@ -11,8 +11,8 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "worker": "npx tsx --env-file=.env src/worker.ts",
-    "worker:dev": "npx tsx watch --env-file=.env src/worker.ts",
+    "worker": "tsx src/worker.ts",
+    "worker:dev": "tsx watch --env-file=.env src/worker.ts",
     "heroku-postbuild": "next build"
   },
   "dependencies": {
