@@ -7,6 +7,7 @@ import Button from "@mui/material/Button";
 import Collapse from "@mui/material/Collapse";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
+import Markdown from "react-markdown";
 import { ExpertCardProps } from "./types";
 
 function ExpertCard({ expertName, expertArchetype, keyQuote, fullAnalysis }: ExpertCardProps): React.ReactElement {
@@ -27,10 +28,8 @@ function ExpertCard({ expertName, expertArchetype, keyQuote, fullAnalysis }: Exp
         {expanded ? "Hide full analysis" : "Read full analysis"}
       </Button>
       <Collapse in={expanded}>
-        <Box sx={{ mt: 2, "& p": { mb: 1.5, lineHeight: 1.7 }, "& h1, & h2, & h3, & h4": { mt: 2, mb: 1, fontWeight: 600 }, "& ul, & ol": { pl: 3, mb: 1.5 }, "& li": { mb: 0.5 } }}>
-          <Typography variant="body2" component="div" sx={{ color: "text.secondary", whiteSpace: "pre-wrap" }}>
-            {fullAnalysis}
-          </Typography>
+        <Box sx={{ mt: 2, color: "text.secondary", fontSize: "0.875rem", lineHeight: 1.7, "& h1, & h2, & h3, & h4": { color: "text.primary", mt: 2.5, mb: 1, fontWeight: 600 }, "& p": { mb: 1.5 }, "& ul, & ol": { pl: 3, mb: 1.5 }, "& li": { mb: 0.5 }, "& strong": { color: "text.primary" }, "& blockquote": { borderLeft: 3, borderColor: "primary.light", pl: 2, my: 1.5, fontStyle: "italic" } }}>
+          <Markdown>{fullAnalysis}</Markdown>
         </Box>
       </Collapse>
     </Box>

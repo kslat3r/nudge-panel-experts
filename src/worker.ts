@@ -106,7 +106,14 @@ async function handleNudgePanelAnalysis(job: Job): Promise<void> {
     throw new Error(msg);
   }
 
-  const summaryExcerpt = summary.executiveSummary.split("\n")[0].slice(0, 300);
+  const firstParagraph = summary.executiveSummary.split("\n\n")[0];
+  const sentences = firstParagraph.match(/[^.!?]+[.!?]+/g) || [firstParagraph];
+  let summaryExcerpt = "";
+  for (const sentence of sentences) {
+    if ((summaryExcerpt + sentence).length > 400) break;
+    summaryExcerpt += sentence;
+  }
+  if (!summaryExcerpt) summaryExcerpt = sentences[0];
 
   console.log(`[${jobId}] Sending teaser email to ${email}...`);
 
