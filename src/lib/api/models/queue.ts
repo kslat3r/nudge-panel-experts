@@ -1,25 +1,14 @@
 import { Queue } from "bullmq";
+import redis from "@/lib/common/models/redis";
 
 const queues = new Map<string, Queue>();
-
-function getConnectionOptions(): { host: string; port: number; password: string | undefined; maxRetriesPerRequest: null; tls?: { rejectUnauthorized: boolean } } {
-  const url = process.env.REDIS_URL ?? "redis://localhost:6379";
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parseInt(parsed.port || "6379"),
-    password: parsed.password || undefined,
-    maxRetriesPerRequest: null,
-    ...(parsed.protocol === "rediss:" ? { tls: { rejectUnauthorized: false } } : {}),
-  };
-}
 
 function getQueue(name: string): Queue {
   if (!queues.has(name)) {
     queues.set(
       name,
       new Queue(name, {
-        connection: getConnectionOptions(),
+        connection: redis,
         defaultJobOptions: {
           removeOnComplete: 100,
           removeOnFail: 500,
@@ -32,6 +21,7 @@ function getQueue(name: string): Queue {
       })
     );
   }
+
   return queues.get(name)!;
 }
 

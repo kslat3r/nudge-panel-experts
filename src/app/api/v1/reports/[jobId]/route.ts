@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import db from "@/lib/api/models/db";
-import { jobs } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import getJobById from "@/lib/common/helpers/get-job-by-id";
 import createError from "@/lib/api/helpers/create-error";
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ jobId: string }> }): Promise<NextResponse> {
@@ -13,27 +11,24 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json(createError("Failed to parse route params", error), { status: 400 });
   }
 
-  let job: typeof jobs.$inferSelect | undefined;
+  let result: Awaited<ReturnType<typeof getJobById>>;
 
   try {
-    const results = await db
-      .select()
-      .from(jobs)
-      .where(eq(jobs.id, jobId));
-    job = results[0];
+    result = await getJobById(jobId);
   } catch (error) {
     return NextResponse.json(createError("Failed to fetch report", error), { status: 500 });
   }
 
-  if (!job) {
+  if (!result) {
     return NextResponse.json(createError("Job not found"), { status: 404 });
   }
 
   return NextResponse.json({
-    id: job.id,
-    status: job.status,
-    output: job.output,
-    error: job.error,
-    createdAt: job.createdAt,
+    id: result.job.id,
+    status: result.job.status,
+    output: result.job.output,
+    error: result.job.error,
+    createdAt: result.job.createdAt,
+    analyses: result.analyses,
   });
 }

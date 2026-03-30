@@ -4,7 +4,7 @@ Customer feedback driven redesign of the Nudge Panel report experience, plus cod
 
 ---
 
-## Phase 0: AGENTS.md Compliance Audit & Fixes
+## Phase 0: AGENTS.md Compliance Audit & Fixes ✅ COMPLETE
 
 Bring the existing codebase into alignment with AGENTS.md before building new features.
 
@@ -110,7 +110,7 @@ src/
 
 ---
 
-## Phase 1: Database & Schema Changes
+## Phase 1: Database & Schema Changes ✅ COMPLETE
 
 ### 1.1 — Extend Jobs Table for Report Data
 
@@ -119,10 +119,11 @@ Add columns to the `jobs` table for report-level data:
 ```
 screenshotViewport     text        — above-the-fold screenshot (base64)
 screenshotFull         text        — full-page screenshot (base64, nullable)
-aggregatedScores       jsonb       — averaged scores across all experts
 topIssues              jsonb       — top 3 issues (extracted by summary agent)
 executiveSummary       text        — synthesised executive summary
 ```
+
+**Note:** Aggregated scores are NOT stored — they are computed on the fly by averaging the 5 score columns across all linked `expert_analyses` records for a given job. A helper function `computeAggregatedScores` in `src/lib/api/helpers/compute-aggregated-scores.ts` takes an array of expert analysis records and returns `{ friction, emotionalEngagement, persuasiveness, clarity, trust }` as averages.
 
 ### 1.1b — New `expert_analyses` Table
 
@@ -165,7 +166,7 @@ These will be displayed on the chart alongside the analysed site's scores.
 
 ---
 
-## Phase 2: Expert Agent Overhaul
+## Phase 2: Expert Agent Overhaul ✅ COMPLETE
 
 ### 2.1 — Rename Expert Personas to Fictional Characters
 
@@ -220,7 +221,7 @@ Update all expert prompts to emphasise diagnosis over prescription:
 
 ---
 
-## Phase 3: Worker Pipeline Changes
+## Phase 3: Worker Pipeline Changes ✅ COMPLETE
 
 ### 3.1 — Capture Both Screenshot Types
 
@@ -232,7 +233,7 @@ Store both in the job record.
 
 ### 3.2 — Parse Structured Scores from Expert Responses
 
-After each expert returns their analysis, parse the JSON scores block from their response. Average all 6 experts' scores to produce `aggregatedScores`.
+After each expert returns their analysis, parse the JSON scores block and key quote from their response. Store each as an `expert_analyses` row. Aggregated scores are computed on the fly at read time (not stored).
 
 ### 3.3 — Generate Top 3 Issues via Summary Agent
 
@@ -246,16 +247,21 @@ Update the executive summary generation step to also extract the **top 3 issues*
 ]
 ```
 
-### 3.4 — Store All Structured Data in Job Record
+### 3.4 — Store All Structured Data
 
-Save to the job record:
-- `screenshotBase64` (above-fold)
-- `fullPageScreenshotBase64` (full page)
-- `expertScores` (per-expert scores)
-- `aggregatedScores` (averaged)
+Save to the `jobs` record:
+- `screenshotViewport` (above-fold)
+- `screenshotFull` (full page)
 - `topIssues` (top 3)
-- `expertQuotes` (key quote per expert)
-- Full expert analyses (existing `output` field)
+- `executiveSummary`
+
+Save to `expert_analyses` (one row per expert, linked by `jobId`):
+- `expertName`, `expertArchetype`
+- `friction`, `emotionalEngagement`, `persuasiveness`, `clarity`, `trust`
+- `keyQuote`
+- `fullAnalysis`
+
+Aggregated scores are NOT stored — use `computeAggregatedScores()` at read time.
 
 ### 3.5 — Update Email to Teaser + Link
 
@@ -266,7 +272,7 @@ Replace the full HTML report email with a short teaser email:
 
 ---
 
-## Phase 4: Web Report Page
+## Phase 4: Web Report Page ✅ COMPLETE
 
 ### 4.1 — Create Report Page Route
 
@@ -332,7 +338,7 @@ Report page must be mobile-friendly. Use MUI's responsive `sx` props and breakpo
 
 ---
 
-## Phase 5: Frontend Updates
+## Phase 5: Frontend Updates ✅ COMPLETE
 
 ### 5.1 — Update Submission Confirmation
 
@@ -345,7 +351,7 @@ Update frontend fetch calls to use `/api/v1/analyse` (matching the versioned API
 
 ---
 
-## Phase 6: Environment & Config
+## Phase 6: Environment & Config ✅ COMPLETE
 
 ### 6.1 — New Environment Variables
 

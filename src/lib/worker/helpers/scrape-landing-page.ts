@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
-import fetchHtml from "@/lib/api/helpers/fetch-html";
-import takeScreenshot from "@/lib/api/helpers/take-screenshot";
+import fetchHtml from "@/lib/worker/helpers/fetch-html";
+import takeScreenshot from "@/lib/worker/helpers/take-screenshot";
 
 export interface ScrapedPage {
   url: string;
@@ -11,13 +11,15 @@ export interface ScrapedPage {
   links: { text: string; href: string }[];
   images: { alt: string; src: string }[];
   ctaButtons: string[];
-  screenshotBase64: string;
+  screenshotViewport: string;
+  screenshotFull: string;
 }
 
 async function scrapeLandingPage(url: string): Promise<ScrapedPage> {
-  const [html, screenshotBase64] = await Promise.all([
+  const [html, screenshotViewport, screenshotFull] = await Promise.all([
     fetchHtml(url),
-    takeScreenshot(url),
+    takeScreenshot(url, false),
+    takeScreenshot(url, true),
   ]);
 
   const $ = cheerio.load(html);
@@ -72,7 +74,8 @@ async function scrapeLandingPage(url: string): Promise<ScrapedPage> {
     links: links.slice(0, 50),
     images: images.slice(0, 30),
     ctaButtons,
-    screenshotBase64,
+    screenshotViewport,
+    screenshotFull,
   };
 }
 

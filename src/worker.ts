@@ -1,55 +1,45 @@
 import { Worker, Job } from "bullmq";
-import scrapeLandingPage from "@/lib/api/helpers/scrape-landing-page";
-import { ScrapedPage } from "@/lib/api/helpers/scrape-landing-page";
-import { Agent } from "@mastra/core/agent";
-import kahnemanAgent from "@/mastra/agents/kahneman";
-import uxCroAgent from "@/mastra/agents/ux-cro";
-import copywriterAgent from "@/mastra/agents/copywriter";
-import designerAgent from "@/mastra/agents/designer";
-import freudAgent from "@/mastra/agents/freud";
-import sutherlandAgent from "@/mastra/agents/sutherland";
-import openai from "@/mastra/model";
-import { generateText } from "ai";
-import generateReportHtml from "@/lib/api/helpers/generate-report-html";
-import { ExpertAnalysis, NudgeReport } from "@/lib/api/helpers/generate-report-html";
-import sendReportEmail from "@/lib/api/helpers/send-report-email";
-import db from "@/lib/api/models/db";
-import { jobs } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import scrapeLandingPage from "@/lib/worker/helpers/scrape-landing-page";
+import { ScrapedPage } from "@/lib/worker/helpers/scrape-landing-page";
+import buildPageContext from "@/lib/worker/helpers/build-page-context";
+import runExpertAnalyses from "@/lib/worker/helpers/run-expert-analyses";
+import { ExpertResult } from "@/lib/worker/helpers/run-expert-analyses";
+import storeExpertAnalyses from "@/lib/worker/helpers/store-expert-analyses";
+import generateSummaryAndIssues from "@/lib/worker/helpers/generate-summary-and-issues";
+import { SummaryAndIssues } from "@/lib/worker/helpers/generate-summary-and-issues";
+import sendTeaserEmail from "@/lib/worker/helpers/send-teaser-email";
+import tenchAgent from "@/mastra/agents/tench";
+import clearwaterAgent from "@/mastra/agents/clearwater";
+import gallowayAgent from "@/mastra/agents/galloway";
+import moreauAgent from "@/mastra/agents/moreau";
+import larkAgent from "@/mastra/agents/lark";
+import crinklebottomAgent from "@/mastra/agents/crinklebottom";
+import redis from "@/lib/common/models/redis";
+import updateJob from "@/lib/worker/helpers/update-job";
+import { ExpertConfig } from "@/lib/worker/helpers/run-expert-analyses";
 
-function getConnectionOptions(): { host: string; port: number; password: string | undefined; maxRetriesPerRequest: null; tls?: { rejectUnauthorized: boolean } } {
-  const url = process.env.REDIS_URL ?? "redis://localhost:6379";
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parseInt(parsed.port || "6379"),
-    password: parsed.password || undefined,
-    maxRetriesPerRequest: null,
-    ...(parsed.protocol === "rediss:"
-      ? { tls: { rejectUnauthorized: false } }
-      : {}),
-  };
-}
+const EXPERTS: ExpertConfig[] = [
+  { agent: tenchAgent, archetype: "Cognitive Psychologist" },
+  { agent: clearwaterAgent, archetype: "UX & CRO Specialist" },
+  { agent: gallowayAgent, archetype: "Copywriter" },
+  { agent: moreauAgent, archetype: "Visual Designer" },
+  { agent: larkAgent, archetype: "Depth Psychologist" },
+  { agent: crinklebottomAgent, archetype: "Behavioural Strategist" },
+];
 
 async function markJobFailed(jobId: string, errorMessage: string): Promise<void> {
   try {
-    await db
-      .update(jobs)
-      .set({ status: "failed", error: errorMessage, updatedAt: new Date() })
-      .where(eq(jobs.id, jobId));
+    await updateJob(jobId, { status: "failed", error: errorMessage });
   } catch (dbError) {
     console.error(`[${jobId}] Failed to mark job as failed in DB:`, dbError);
   }
 }
 
-async function handleNudgePanelAnalysis(job: Job): Promise<NudgeReport> {
+async function handleNudgePanelAnalysis(job: Job): Promise<void> {
   const { jobId, url, email } = job.data;
 
   try {
-    await db
-      .update(jobs)
-      .set({ status: "processing", updatedAt: new Date() })
-      .where(eq(jobs.id, jobId));
+    await updateJob(jobId, { status: "processing" });
   } catch (error) {
     const msg = `Failed to update job status to processing: ${error instanceof Error ? error.message : String(error)}`;
     await markJobFailed(jobId, msg);
@@ -68,141 +58,78 @@ async function handleNudgePanelAnalysis(job: Job): Promise<NudgeReport> {
     throw new Error(msg);
   }
 
-  const pageContext = `
-Landing Page URL: ${scrapedPage.url}
-Page Title: ${scrapedPage.title}
-Meta Description: ${scrapedPage.metaDescription}
+  const pageContext = buildPageContext(scrapedPage);
 
-Headings:
-${scrapedPage.headings.map((h) => `  ${h.level}: ${h.text}`).join("\n")}
+  console.log(`[${jobId}] Running ${EXPERTS.length} expert analyses...`);
 
-CTA Buttons Found:
-${scrapedPage.ctaButtons.map((b) => `  - ${b}`).join("\n") || "  None found"}
-
-Page Content (excerpt):
-${scrapedPage.bodyText}
-
-Links (sample):
-${scrapedPage.links
-  .slice(0, 20)
-  .map((l) => `  - ${l.text}: ${l.href}`)
-  .join("\n")}
-
-Images:
-${scrapedPage.images
-  .slice(0, 15)
-  .map((i) => `  - alt="${i.alt}" src="${i.src}"`)
-  .join("\n")}
-`.trim();
-
-  const experts: Agent[] = [kahnemanAgent, uxCroAgent, copywriterAgent, designerAgent, freudAgent, sutherlandAgent];
-
-  console.log(`[${jobId}] Running ${experts.length} expert analyses...`);
-
-  let expertResults: ExpertAnalysis[];
+  let expertResults: ExpertResult[];
 
   try {
-    expertResults = await Promise.all(
-      experts.map(async (expert) => {
-        const result = await expert.generate([
-          {
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: `Please analyse this landing page:\n\n${pageContext}`,
-              },
-              {
-                type: "image",
-                image: `data:image/jpeg;base64,${scrapedPage.screenshotBase64}`,
-              },
-            ],
-          },
-        ]);
-
-        return {
-          expertName: expert.name,
-          analysis: result.text,
-        } as ExpertAnalysis;
-      }),
-    );
+    expertResults = await runExpertAnalyses(EXPERTS, pageContext, scrapedPage.screenshotViewport);
   } catch (error) {
     const msg = `Failed to run expert analyses: ${error instanceof Error ? error.message : String(error)}`;
     await markJobFailed(jobId, msg);
     throw new Error(msg);
   }
 
-  console.log(`[${jobId}] Generating executive summary...`);
+  try {
+    await storeExpertAnalyses(jobId, expertResults);
+  } catch (error) {
+    const msg = `Failed to store expert analyses: ${error instanceof Error ? error.message : String(error)}`;
+    await markJobFailed(jobId, msg);
+    throw new Error(msg);
+  }
 
-  const allAnalyses = expertResults
-    .map((ea) => `## ${ea.expertName}\n${ea.analysis}`)
-    .join("\n\n---\n\n");
+  console.log(`[${jobId}] Generating executive summary and top issues...`);
 
-  let executiveSummary: string;
+  let summary: SummaryAndIssues;
 
   try {
-    const result = await generateText({
-      model: openai("gpt-4.1"),
-      system: `You are synthesising expert analyses of a landing page into a brief, compelling executive summary. This summary is the "foot in the door" — it should clearly diagnose what's wrong, tease 1-2 solutions, and make the reader want the full breakdown. Keep it to 3-4 paragraphs. Be direct and specific, not generic.`,
-      prompt: `Here are analyses from our panel of experts for the landing page at ${url}:\n\n${allAnalyses}\n\nSynthesise these into a brief executive summary that highlights the most critical issues and teases solutions.`,
-    });
-    executiveSummary = result.text;
+    summary = await generateSummaryAndIssues(url, expertResults);
   } catch (error) {
     const msg = `Failed to generate executive summary: ${error instanceof Error ? error.message : String(error)}`;
     await markJobFailed(jobId, msg);
     throw new Error(msg);
   }
 
-  const report: NudgeReport = {
-    url,
-    pageTitle: scrapedPage.title || url,
-    generatedAt: new Date().toISOString(),
-    expertAnalyses: expertResults,
-    executiveSummary,
-  };
-
-  const reportHtml = generateReportHtml(report);
-
-  console.log(`[${jobId}] Sending report to ${email}...`);
-
   try {
-    await sendReportEmail(email, `Nudge Panel Report: ${scrapedPage.title || url}`, reportHtml);
+    await updateJob(jobId, {
+      status: "completed",
+      screenshotViewport: scrapedPage.screenshotViewport,
+      screenshotFull: scrapedPage.screenshotFull,
+      topIssues: summary.topIssues,
+      executiveSummary: summary.executiveSummary,
+    });
   } catch (error) {
-    const msg = `Failed to send report email: ${error instanceof Error ? error.message : String(error)}`;
-    await markJobFailed(jobId, msg);
-    throw new Error(msg);
-  }
-
-  try {
-    await db
-      .update(jobs)
-      .set({
-        status: "completed",
-        output: report,
-        updatedAt: new Date(),
-      })
-      .where(eq(jobs.id, jobId));
-  } catch (error) {
-    const msg = `Failed to update job status to completed: ${error instanceof Error ? error.message : String(error)}`;
+    const msg = `Failed to update job with results: ${error instanceof Error ? error.message : String(error)}`;
     console.error(`[${jobId}] ${msg}`);
     throw new Error(msg);
   }
 
-  console.log(`[${jobId}] Analysis complete and emailed to ${email}`);
+  const summaryExcerpt = summary.executiveSummary.split("\n")[0].slice(0, 300);
 
-  return report;
+  console.log(`[${jobId}] Sending teaser email to ${email}...`);
+
+  try {
+    await sendTeaserEmail(email, jobId, scrapedPage.title || url, summaryExcerpt);
+  } catch (error) {
+    const msg = `Failed to send teaser email: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(`[${jobId}] ${msg} (job still marked as completed)`);
+  }
+
+  console.log(`[${jobId}] Analysis complete, report available and email sent to ${email}`);
 }
 
 const worker = new Worker(
   "agent-workflows",
-  async (job: Job): Promise<NudgeReport> => {
+  async (job: Job): Promise<void> => {
     if (job.name === "nudge-panel-analysis") {
       return handleNudgePanelAnalysis(job);
     }
     throw new Error(`Unknown job type: ${job.name}`);
   },
   {
-    connection: getConnectionOptions(),
+    connection: redis,
     concurrency: 1,
   },
 );

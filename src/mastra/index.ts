@@ -1,19 +1,19 @@
 import { Mastra } from "@mastra/core";
-import kahnemanAgent from "@/mastra/agents/kahneman";
-import uxCroAgent from "@/mastra/agents/ux-cro";
-import copywriterAgent from "@/mastra/agents/copywriter";
-import designerAgent from "@/mastra/agents/designer";
-import freudAgent from "@/mastra/agents/freud";
-import sutherlandAgent from "@/mastra/agents/sutherland";
+import tenchAgent from "@/mastra/agents/tench";
+import clearwaterAgent from "@/mastra/agents/clearwater";
+import gallowayAgent from "@/mastra/agents/galloway";
+import moreauAgent from "@/mastra/agents/moreau";
+import larkAgent from "@/mastra/agents/lark";
+import crinklebottomAgent from "@/mastra/agents/crinklebottom";
 
 const mastra = new Mastra({
   agents: {
-    kahneman: kahnemanAgent,
-    uxCro: uxCroAgent,
-    copywriter: copywriterAgent,
-    designer: designerAgent,
-    freud: freudAgent,
-    sutherland: sutherlandAgent,
+    tench: tenchAgent,
+    clearwater: clearwaterAgent,
+    galloway: gallowayAgent,
+    moreau: moreauAgent,
+    lark: larkAgent,
+    crinklebottom: crinklebottomAgent,
   },
 });
 

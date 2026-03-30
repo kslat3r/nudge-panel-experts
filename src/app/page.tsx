@@ -93,8 +93,9 @@ export default function Home(): React.ReactElement {
               Analysis Queued
             </Typography>
             <Typography color="text.secondary">
-              Our panel of experts is reviewing your landing page. You&apos;ll
-              receive the report at <strong>{email}</strong> shortly.
+              Our panel of experts is analysing your page. You&apos;ll receive
+              an email with a link to your report at <strong>{email}</strong>{" "}
+              when it&apos;s ready.
             </Typography>
             <Typography variant="body2" color="text.disabled" sx={{ mt: 2 }}>
               Job ID: {jobId}

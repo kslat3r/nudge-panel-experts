@@ -1,6 +1,6 @@
 import { Client, TakeOptions } from "screenshotone-api-sdk";
 
-async function takeScreenshot(url: string): Promise<string> {
+async function takeScreenshot(url: string, fullPage: boolean = false): Promise<string> {
   const client = new Client(
     process.env.SCREENSHOTONE_ACCESS_KEY!,
     process.env.SCREENSHOTONE_SECRET_KEY!,
@@ -11,7 +11,7 @@ async function takeScreenshot(url: string): Promise<string> {
     .imageQuality(70)
     .viewportWidth(1280)
     .viewportHeight(800)
-    .fullPage(false)
+    .fullPage(fullPage)
     .blockAds(true)
     .blockCookieBanners(true)
     .timeout(15);
