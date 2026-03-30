@@ -9,7 +9,7 @@ export default function ThemeRegistry({
   children,
 }: {
   children: React.ReactNode;
-}) {
+}): React.ReactElement {
   return (
     <AppRouterCacheProvider>
       <ThemeProvider theme={theme}>

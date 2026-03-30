@@ -1,16 +1,12 @@
 import { Mastra } from "@mastra/core";
-import {
-  kahnemanAgent,
-  uxCroAgent,
-  copywriterAgent,
-  designerAgent,
-  freudAgent,
-  sutherlandAgent,
-} from "./agents/experts";
+import kahnemanAgent from "@/mastra/agents/kahneman";
+import uxCroAgent from "@/mastra/agents/ux-cro";
+import copywriterAgent from "@/mastra/agents/copywriter";
+import designerAgent from "@/mastra/agents/designer";
+import freudAgent from "@/mastra/agents/freud";
+import sutherlandAgent from "@/mastra/agents/sutherland";
 
-export { openai } from "./model";
-
-export const mastra = new Mastra({
+const mastra = new Mastra({
   agents: {
     kahneman: kahnemanAgent,
     uxCro: uxCroAgent,
@@ -20,3 +16,5 @@ export const mastra = new Mastra({
     sutherland: sutherlandAgent,
   },
 });
+
+export default mastra;

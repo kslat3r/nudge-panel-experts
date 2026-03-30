@@ -1,4 +1,4 @@
-import { marked } from "marked";
+import renderMarkdown from "@/lib/api/helpers/render-markdown";
 
 export interface ExpertAnalysis {
   expertName: string;
@@ -13,11 +13,7 @@ export interface NudgeReport {
   executiveSummary: string;
 }
 
-function renderMarkdown(md: string): string {
-  return marked.parse(md, { async: false }) as string;
-}
-
-export function generateReportHtml(report: NudgeReport): string {
+function generateReportHtml(report: NudgeReport): string {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -137,3 +133,5 @@ export function generateReportHtml(report: NudgeReport): string {
 </body>
 </html>`;
 }
+
+export default generateReportHtml;

@@ -13,20 +13,20 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 type Status = "idle" | "submitting" | "submitted" | "error";
 
-export default function Home() {
+export default function Home(): React.ReactElement {
   const [url, setUrl] = useState("");
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [jobId, setJobId] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault();
     setStatus("submitting");
     setErrorMessage("");
 
     try {
-      const response = await fetch("/api/analyse", {
+      const response = await fetch("/api/v1/analyse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, email }),

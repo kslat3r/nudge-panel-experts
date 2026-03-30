@@ -1,14 +1,23 @@
 import { Worker, Job } from "bullmq";
-import { scrapeLandingPage } from "./lib/scraper";
-import { experts } from "./mastra/agents/experts";
-import { openai } from "./mastra/index";
+import scrapeLandingPage from "@/lib/api/helpers/scrape-landing-page";
+import { ScrapedPage } from "@/lib/api/helpers/scrape-landing-page";
+import { Agent } from "@mastra/core/agent";
+import kahnemanAgent from "@/mastra/agents/kahneman";
+import uxCroAgent from "@/mastra/agents/ux-cro";
+import copywriterAgent from "@/mastra/agents/copywriter";
+import designerAgent from "@/mastra/agents/designer";
+import freudAgent from "@/mastra/agents/freud";
+import sutherlandAgent from "@/mastra/agents/sutherland";
+import openai from "@/mastra/model";
 import { generateText } from "ai";
-import { NudgeReport, ExpertAnalysis, generateReportHtml } from "./lib/report";
-import { sendReportEmail } from "./lib/email";
-import { db, schema } from "./db";
+import generateReportHtml from "@/lib/api/helpers/generate-report-html";
+import { ExpertAnalysis, NudgeReport } from "@/lib/api/helpers/generate-report-html";
+import sendReportEmail from "@/lib/api/helpers/send-report-email";
+import db from "@/lib/api/models/db";
+import { jobs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-function getConnectionOptions() {
+function getConnectionOptions(): { host: string; port: number; password: string | undefined; maxRetriesPerRequest: null; tls?: { rejectUnauthorized: boolean } } {
   const url = process.env.REDIS_URL ?? "redis://localhost:6379";
   const parsed = new URL(url);
   return {
@@ -22,21 +31,44 @@ function getConnectionOptions() {
   };
 }
 
-async function handleNudgePanelAnalysis(job: Job) {
+async function markJobFailed(jobId: string, errorMessage: string): Promise<void> {
+  try {
+    await db
+      .update(jobs)
+      .set({ status: "failed", error: errorMessage, updatedAt: new Date() })
+      .where(eq(jobs.id, jobId));
+  } catch (dbError) {
+    console.error(`[${jobId}] Failed to mark job as failed in DB:`, dbError);
+  }
+}
+
+async function handleNudgePanelAnalysis(job: Job): Promise<NudgeReport> {
   const { jobId, url, email } = job.data;
 
   try {
-    // Update status to processing
     await db
-      .update(schema.jobs)
+      .update(jobs)
       .set({ status: "processing", updatedAt: new Date() })
-      .where(eq(schema.jobs.id, jobId));
+      .where(eq(jobs.id, jobId));
+  } catch (error) {
+    const msg = `Failed to update job status to processing: ${error instanceof Error ? error.message : String(error)}`;
+    await markJobFailed(jobId, msg);
+    throw new Error(msg);
+  }
 
-    console.log(`[${jobId}] Scraping landing page: ${url}`);
-    const scrapedPage = await scrapeLandingPage(url);
+  console.log(`[${jobId}] Scraping landing page: ${url}`);
 
-    // Build the context prompt for all experts
-    const pageContext = `
+  let scrapedPage: ScrapedPage;
+
+  try {
+    scrapedPage = await scrapeLandingPage(url);
+  } catch (error) {
+    const msg = `Failed to scrape landing page: ${error instanceof Error ? error.message : String(error)}`;
+    await markJobFailed(jobId, msg);
+    throw new Error(msg);
+  }
+
+  const pageContext = `
 Landing Page URL: ${scrapedPage.url}
 Page Title: ${scrapedPage.title}
 Meta Description: ${scrapedPage.metaDescription}
@@ -63,9 +95,14 @@ ${scrapedPage.images
   .join("\n")}
 `.trim();
 
-    // Run all experts in parallel
-    console.log(`[${jobId}] Running ${experts.length} expert analyses...`);
-    const expertResults = await Promise.all(
+  const experts: Agent[] = [kahnemanAgent, uxCroAgent, copywriterAgent, designerAgent, freudAgent, sutherlandAgent];
+
+  console.log(`[${jobId}] Running ${experts.length} expert analyses...`);
+
+  let expertResults: ExpertAnalysis[];
+
+  try {
+    expertResults = await Promise.all(
       experts.map(async (expert) => {
         const result = await expert.generate([
           {
@@ -89,72 +126,76 @@ ${scrapedPage.images
         } as ExpertAnalysis;
       }),
     );
+  } catch (error) {
+    const msg = `Failed to run expert analyses: ${error instanceof Error ? error.message : String(error)}`;
+    await markJobFailed(jobId, msg);
+    throw new Error(msg);
+  }
 
-    // Generate executive summary
-    console.log(`[${jobId}] Generating executive summary...`);
+  console.log(`[${jobId}] Generating executive summary...`);
 
-    const allAnalyses = expertResults
-      .map((ea) => `## ${ea.expertName}\n${ea.analysis}`)
-      .join("\n\n---\n\n");
+  const allAnalyses = expertResults
+    .map((ea) => `## ${ea.expertName}\n${ea.analysis}`)
+    .join("\n\n---\n\n");
 
-    const { text: executiveSummary } = await generateText({
+  let executiveSummary: string;
+
+  try {
+    const result = await generateText({
       model: openai("gpt-4.1"),
       system: `You are synthesising expert analyses of a landing page into a brief, compelling executive summary. This summary is the "foot in the door" — it should clearly diagnose what's wrong, tease 1-2 solutions, and make the reader want the full breakdown. Keep it to 3-4 paragraphs. Be direct and specific, not generic.`,
       prompt: `Here are analyses from our panel of experts for the landing page at ${url}:\n\n${allAnalyses}\n\nSynthesise these into a brief executive summary that highlights the most critical issues and teases solutions.`,
     });
+    executiveSummary = result.text;
+  } catch (error) {
+    const msg = `Failed to generate executive summary: ${error instanceof Error ? error.message : String(error)}`;
+    await markJobFailed(jobId, msg);
+    throw new Error(msg);
+  }
 
-    // Build the report
-    const report: NudgeReport = {
-      url,
-      pageTitle: scrapedPage.title || url,
-      generatedAt: new Date().toISOString(),
-      expertAnalyses: expertResults,
-      executiveSummary,
-    };
+  const report: NudgeReport = {
+    url,
+    pageTitle: scrapedPage.title || url,
+    generatedAt: new Date().toISOString(),
+    expertAnalyses: expertResults,
+    executiveSummary,
+  };
 
-    const reportHtml = generateReportHtml(report);
+  const reportHtml = generateReportHtml(report);
 
-    // Send email
-    console.log(`[${jobId}] Sending report to ${email}...`);
-    await sendReportEmail(
-      email,
-      `Nudge Panel Report: ${scrapedPage.title || url}`,
-      reportHtml,
-    );
+  console.log(`[${jobId}] Sending report to ${email}...`);
 
-    // Update job as completed
+  try {
+    await sendReportEmail(email, `Nudge Panel Report: ${scrapedPage.title || url}`, reportHtml);
+  } catch (error) {
+    const msg = `Failed to send report email: ${error instanceof Error ? error.message : String(error)}`;
+    await markJobFailed(jobId, msg);
+    throw new Error(msg);
+  }
+
+  try {
     await db
-      .update(schema.jobs)
+      .update(jobs)
       .set({
         status: "completed",
         output: report,
         updatedAt: new Date(),
       })
-      .where(eq(schema.jobs.id, jobId));
-
-    console.log(`[${jobId}] Analysis complete and emailed to ${email}`);
-
-    return report;
+      .where(eq(jobs.id, jobId));
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error(`[${jobId}] Analysis failed:`, errorMessage);
-
-    await db
-      .update(schema.jobs)
-      .set({
-        status: "failed",
-        error: errorMessage,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.jobs.id, jobId));
-
-    throw error;
+    const msg = `Failed to update job status to completed: ${error instanceof Error ? error.message : String(error)}`;
+    console.error(`[${jobId}] ${msg}`);
+    throw new Error(msg);
   }
+
+  console.log(`[${jobId}] Analysis complete and emailed to ${email}`);
+
+  return report;
 }
 
 const worker = new Worker(
   "agent-workflows",
-  async (job: Job) => {
+  async (job: Job): Promise<NudgeReport> => {
     if (job.name === "nudge-panel-analysis") {
       return handleNudgePanelAnalysis(job);
     }

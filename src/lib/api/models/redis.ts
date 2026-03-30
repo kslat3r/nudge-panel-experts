@@ -2,7 +2,7 @@ import IORedis from "ioredis";
 
 let redisInstance: IORedis | null = null;
 
-export function getRedis(): IORedis {
+function getRedis(): IORedis {
   if (!redisInstance) {
     const url = process.env.REDIS_URL ?? "redis://localhost:6379";
     redisInstance = new IORedis(url, {
@@ -13,3 +13,7 @@ export function getRedis(): IORedis {
   }
   return redisInstance;
 }
+
+const redis: IORedis = getRedis();
+
+export default redis;

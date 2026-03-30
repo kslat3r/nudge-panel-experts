@@ -2,7 +2,7 @@ import { Queue } from "bullmq";
 
 const queues = new Map<string, Queue>();
 
-function getConnectionOptions() {
+function getConnectionOptions(): { host: string; port: number; password: string | undefined; maxRetriesPerRequest: null; tls?: { rejectUnauthorized: boolean } } {
   const url = process.env.REDIS_URL ?? "redis://localhost:6379";
   const parsed = new URL(url);
   return {
@@ -14,7 +14,7 @@ function getConnectionOptions() {
   };
 }
 
-export function getQueue(name: string): Queue {
+function getQueue(name: string): Queue {
   if (!queues.has(name)) {
     queues.set(
       name,
@@ -34,3 +34,5 @@ export function getQueue(name: string): Queue {
   }
   return queues.get(name)!;
 }
+
+export default getQueue;

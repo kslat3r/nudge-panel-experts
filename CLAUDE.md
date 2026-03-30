@@ -5,38 +5,55 @@ AI-powered landing page analysis tool. A panel of six AI expert personas analyse
 ## Stack
 
 - **Framework**: Next.js 16 (App Router, TypeScript, Material UI)
-- **Orchestration**: Mastra (`@mastra/core`) with OpenAI (`gpt-4o`)
+- **Orchestration**: Mastra (`@mastra/core`) with OpenAI (`gpt-5.2`)
 - **Database**: PostgreSQL + pgvector via Drizzle ORM
 - **Queue**: BullMQ + Redis for async job processing
 - **Scraping**: ScreenshotOne API (screenshots) + Cheerio (HTML extraction)
 - **Email**: Resend
-- **Hosting**: Heroku (web dyno + worker dyno)
+- **Hosting**: Fly.io
 
 ## Project Structure
 
 ```
 src/
   app/
-    page.tsx                    # Frontend: URL + email submission form
+    page.tsx                              # Frontend: URL + email submission form
     api/
-      analyse/route.ts          # POST — queues a new analysis job
-      report/[jobId]/route.ts   # GET — check job status / fetch report
+      v1/
+        analyse/route.ts                  # POST — queues a new analysis job
+        reports/[jobId]/route.ts          # GET — check job status / fetch report
+      health/route.ts                     # GET — health check
   db/
-    schema.ts                   # Drizzle schema (jobs, documents tables)
-    index.ts                    # Database connection
+    schema.ts                             # Drizzle schema (jobs, documents tables)
+    migrate.ts                            # Runtime migration script
   lib/
-    scraper.ts                  # ScreenshotOne API screenshot + Cheerio HTML extraction
-    report.ts                   # HTML report template generation
-    email.ts                    # Resend email delivery
-    queue.ts                    # BullMQ queue factory
-    redis.ts                    # IORedis singleton
+    api/
+      helpers/
+        scrape-landing-page.ts            # Orchestrates HTML fetch + screenshot
+        fetch-html.ts                     # Fetches raw HTML from a URL
+        take-screenshot.ts                # ScreenshotOne API screenshot capture
+        generate-report-html.ts           # HTML report template generation
+        render-markdown.ts                # Markdown to HTML conversion
+        send-report-email.ts              # Resend email delivery
+        create-error.ts                   # Standardised API error response builder
+      models/
+        db.ts                             # Drizzle + pg Pool singleton
+        redis.ts                          # IORedis singleton
+        resend.ts                         # Resend client singleton
+        queue.ts                          # BullMQ queue factory
+      schemas/
+        analyse.ts                        # Zod schema for POST /api/v1/analyse
   mastra/
-    index.ts                    # Mastra instance with all 6 agents registered
+    index.ts                              # Mastra instance with all 6 agents registered
+    model.ts                              # OpenAI provider singleton
     agents/
-      experts.ts                # 6 expert persona agent definitions
-    tools/
-    workflows/
-  worker.ts                     # BullMQ worker — orchestrates the full analysis pipeline
+      kahneman.ts                         # Cognitive psychologist agent
+      ux-cro.ts                           # UX & CRO specialist agent
+      copywriter.ts                       # Copywriter agent
+      designer.ts                         # Visual designer agent
+      freud.ts                            # Psychoanalyst agent
+      sutherland.ts                       # Lateral thinker / behavioural strategist agent
+  worker.ts                               # BullMQ worker — orchestrates the full analysis pipeline
 ```
 
 ## Expert Personas
@@ -55,7 +72,7 @@ Each expert returns: Key Findings, Detailed Analysis, quantitative Metrics (1-10
 ## How It Works
 
 1. User submits a landing page URL + email on the frontend
-2. `POST /api/analyse` creates a job record in Postgres and queues it via BullMQ
+2. `POST /api/v1/analyse` creates a job record in Postgres and queues it via BullMQ
 3. The worker picks up the job:
    - Scrapes the landing page (ScreenshotOne API screenshot + Cheerio HTML parse)
    - Runs all 6 expert agents in parallel (each receives page content + screenshot)
@@ -63,17 +80,18 @@ Each expert returns: Key Findings, Detailed Analysis, quantitative Metrics (1-10
    - Builds a styled HTML report
    - Emails the report to the user via Resend
    - Updates the job record with results
+
 ## Commands
 
-- `npm run dev` — Start Next.js dev server
-- `npm run build` — Production build
-- `npm start` — Start production server
-- `npm run lint` — Run ESLint
-- `npm run worker` — Start BullMQ worker
-- `npm run db:push` — Push schema to database
-- `npm run db:generate` — Generate Drizzle migrations
-- `npm run db:migrate` — Run Drizzle migrations
-- `npm run db:studio` — Open Drizzle Studio
+- `pnpm run dev` — Start Next.js dev server
+- `pnpm run build` — Production build
+- `pnpm start` — Start production server
+- `pnpm run lint` — Run ESLint
+- `pnpm run worker` — Start BullMQ worker
+- `pnpm run db:push` — Push schema to database
+- `pnpm run db:generate` — Generate Drizzle migrations
+- `pnpm run db:migrate` — Run Drizzle migrations
+- `pnpm run db:studio` — Open Drizzle Studio
 
 ## Environment Variables
 
@@ -82,11 +100,19 @@ Copy `.env.example` to `.env`. Required:
 - `REDIS_URL` — Redis connection string
 - `OPENAI_API_KEY` — For OpenAI LLM calls
 - `RESEND_API_KEY` — For email delivery
+- `SCREENSHOTONE_ACCESS_KEY` — For ScreenshotOne API
+- `SCREENSHOTONE_SECRET_KEY` — For ScreenshotOne API
 
 ## Conventions
 
-- Expert agents are defined in `src/mastra/agents/experts.ts` and registered in `src/mastra/index.ts`
-- Long-running analysis goes through BullMQ to avoid Heroku's 30-second request timeout
+- Each expert agent is defined in its own file under `src/mastra/agents/` and registered in `src/mastra/index.ts`
+- One function per file in `lib/` directories with default exports
+- One `await` per `try/catch` block
+- `@/` path alias for all imports (no relative imports)
+- Zod validation at API boundaries (`src/lib/api/schemas/`)
+- Explicit return types on all functions
+- API routes versioned under `/api/v1/`
+- Long-running analysis goes through BullMQ to avoid request timeouts
 - The worker runs all experts in parallel via `Promise.all` for speed
-- The report email template is in `src/lib/report.ts` — inline styles for email client compatibility
-- The `from` address in `src/lib/email.ts` must match a verified Resend domain
+- The report email template is in `src/lib/api/helpers/generate-report-html.ts` — inline styles for email client compatibility
+- The `from` address in `src/lib/api/helpers/send-report-email.ts` must match a verified Resend domain

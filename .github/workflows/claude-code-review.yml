@@ -1,0 +1,79 @@
+name: Claude Code Review
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  claude-review:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      id-token: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get commits from last 6 hours
+        id: recent-commits
+        run: |
+          SINCE=$(date -u -d '6 hours ago' '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || date -u -v-6H '+%Y-%m-%dT%H:%M:%SZ')
+          COMMITS=$(git log --since="$SINCE" --oneline --no-merges)
+          if [ -z "$COMMITS" ]; then
+            echo "has_commits=false" >> $GITHUB_OUTPUT
+            echo "No commits in the last 6 hours"
+          else
+            echo "has_commits=true" >> $GITHUB_OUTPUT
+            DIFF=$(git diff $(git log --since="$SINCE" --reverse --format=%H | head -1)^..HEAD --name-only 2>/dev/null || echo "")
+            echo "Changed files:"
+            echo "$DIFF"
+            {
+              echo "files<<EOF"
+              echo "$DIFF"
+              echo "EOF"
+            } >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run Claude Code Review
+        if: steps.recent-commits.outputs.has_commits == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          model: claude-opus-4-6
+          direct: true
+          allowed_tools: 'Bash,Read,Edit,Write,Glob,Grep'
+          prompt: |
+            Review the code changes made in the last 6 hours for compliance with the coding standards defined in AGENTS.md at the root of this repository.
+
+            First, read AGENTS.md to understand the coding standards.
+
+            Then review these recently changed files:
+            ${{ steps.recent-commits.outputs.files }}
+
+            For each file, check compliance with:
+            1. One function per file in lib/ directories
+            2. One await per try/catch block
+            3. Default exports for helpers, middleware, and components
+            4. Directory-based component structure
+            5. No barrel imports
+            6. @/ path alias usage (no relative imports)
+            7. Explicit return types on all functions
+            8. Soft deletes on database queries
+            9. MUI sx prop for styling (no Tailwind, CSS modules, styled-components)
+            10. Zod for validation at API boundaries
+
+            If you find any violations:
+            1. Create a new branch named "fix/agents-md-compliance-$(date +%s)"
+            2. Fix all violations directly in the code
+            3. Commit the changes with a descriptive message
+            4. Push the branch and create a pull request targeting main
+            5. Assign the pull request to kslat3r
+            6. In the PR description, list every file changed and what was fixed
+
+            If everything is compliant, do nothing.
